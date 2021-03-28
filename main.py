@@ -2,9 +2,13 @@ import time
 import datetime as dt
 
 import requests
+from bs4 import BeautifulSoup as bs4
 import tweepy
 
 from config import API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET, FILENAME
+
+
+LINK_BLOG_ATAG_IDX = 7
 
 
 def add_text(filename, str):
@@ -25,7 +29,7 @@ def load_text(filename):
     with open(filename, mode='r') as f:
         return f.readlines()
 
-def main(sleep_time, str_tweet):
+def main(sleep_time):
 
     while check_date_existed(get_datestr_today('%Y/%m/%d')):
         print('%s is already posted.' % get_datestr_today('%Y/%m/%d'))
@@ -39,15 +43,26 @@ def main(sleep_time, str_tweet):
 
     if r.status_code == 200:
 
+        # Auth
         auth = tweepy.OAuthHandler(API_KEY, API_SECRET_KEY)
         auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
         api = tweepy.API(auth)
-        api.update_status('%s\n%s' % (str_tweet, url))
+
+        # Tweet content
+        soup = bs4(r.text, 'html.parser')
+        url = soup.find_all('a')[LINK_BLOG_ATAG_IDX].get('href')
+        blog_title = soup.find('h2', {'class':'entry-title'}).text
+
+        tweet = ''
+        tweet += 'ブログ「' + blog_title + '」を更新しました！\n'
+        tweet += url
+
+        api.update_status(tweet)
         add_text(FILENAME, date+'\n')
 
 if __name__ == '__main__':
 
     while True:
 
-        main(100, 'ルークスのブログを更新しました！')
-        time.sleep(100)
+        main(10)
+        time.sleep(10)
